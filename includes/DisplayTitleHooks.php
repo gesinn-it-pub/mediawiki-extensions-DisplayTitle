@@ -56,8 +56,8 @@ class DisplayTitleHooks
 	 */
 	public static function onPageSaveComplete(WikiPage $wikiPage, MediaWiki\User\UserIdentity $user, string $summary, int $flags, MediaWiki\Revision\RevisionRecord $revisionRecord, MediaWiki\Storage\EditResult $editResult)
 	{
-		$indirectLinks = self::getIndirectLinks($wikiPage->getTitle());
-		foreach ($indirectLinks as $row) {
+		$incomingLinks = self::getIncomingLinks($wikiPage->getTitle());
+		foreach ($incomingLinks as $row) {
 			$jobs[] = new DisplayTitlePurgeIncomingLinksJob([
 				'page' => WikiPage::newFromRow($row)
 			]);
@@ -72,7 +72,7 @@ class DisplayTitleHooks
 	 * @param Title $title
 	 * @return array
 	 */
-	private static function getIndirectLinks($title)
+	private static function getIncomingLinks($title)
 	{
 
 		$dbr = wfGetDB(DB_REPLICA);
@@ -122,7 +122,6 @@ class DisplayTitleHooks
 					'page_is_redirect'
 				])
 				->orderBy('page_id')
-				->caller(__CLASS__ . '::showIndirectLinks')
 				->fetchResultSet();
 		};
 		$rdRes = $dbr->select(
