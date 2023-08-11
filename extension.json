@@ -22,7 +22,8 @@
 	},
 	"AutoloadClasses": {
 		"DisplayTitleHooks": "includes/DisplayTitleHooks.php",
-		"DisplayTitleLuaLibrary": "includes/DisplayTitleLuaLibrary.php"
+		"DisplayTitleLuaLibrary": "includes/DisplayTitleLuaLibrary.php",
+		"DisplayTitlePurgeIncomingLinksJob": "includes/DisplayTitlePurgeIncomingLinksJob.php"
 	},
 	"Hooks": {
 		"ParserFirstCallInit": "DisplayTitleHooks::onParserFirstCallInit",
@@ -32,7 +33,11 @@
 		"SkinTemplateNavigation::Universal": "DisplayTitleHooks::onSkinTemplateNavigation__Universal",
 		"HtmlPageLinkRendererBegin": "DisplayTitleHooks::onHtmlPageLinkRendererBegin",
 		"ScribuntoExternalLibraries": "DisplayTitleHooks::onScribuntoExternalLibraries",
-		"SelfLinkBegin": "DisplayTitleHooks::onSelfLinkBegin"
+		"SelfLinkBegin": "DisplayTitleHooks::onSelfLinkBegin",
+		"PageSaveComplete": "DisplayTitleHooks::onPageSaveComplete"
+	},
+	"JobClasses": {
+		"DisplayTitlePurgeIncomingLinksJob": "DisplayTitlePurgeIncomingLinksJob"
 	},
 	"config": {
 		"DisplayTitleHideSubtitle": {
