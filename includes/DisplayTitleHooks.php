@@ -59,7 +59,7 @@ class DisplayTitleHooks
 		$incomingLinks = self::getIncomingLinks($wikiPage->getTitle());
 		foreach ($incomingLinks as $row) {
 			$jobs[] = new DisplayTitlePurgeIncomingLinksJob([
-				'page' => WikiPage::newFromRow($row)
+				'pageid' => $row->page_id
 			]);
 		}
 		JobQueueGroup::singleton()->lazyPush($jobs);

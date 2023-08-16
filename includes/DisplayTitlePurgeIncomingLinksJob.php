@@ -17,7 +17,8 @@ class DisplayTitlePurgeIncomingLinksJob extends Job implements GenericParameterJ
      */
     public function run()
     {
-        $this->params['page']->doPurge();
+        $page = WikiPage::newFromID($this->params['pageid']);
+        $page->doPurge();
         return true;
     }
 }
