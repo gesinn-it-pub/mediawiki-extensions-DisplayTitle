@@ -57,12 +57,15 @@ class DisplayTitleHooks
 	public static function onPageSaveComplete(WikiPage $wikiPage, MediaWiki\User\UserIdentity $user, string $summary, int $flags, MediaWiki\Revision\RevisionRecord $revisionRecord, MediaWiki\Storage\EditResult $editResult)
 	{
 		$incomingLinks = self::getIncomingLinks($wikiPage->getTitle());
+		$jobs = [];
 		foreach ($incomingLinks as $row) {
 			$jobs[] = new DisplayTitlePurgeIncomingLinksJob([
 				'pageid' => $row->page_id
 			]);
 		}
-		JobQueueGroup::singleton()->lazyPush($jobs);
+		if($jobs) {
+			JobQueueGroup::singleton()->lazyPush($jobs);
+		}
 		return true;
 	}
 
