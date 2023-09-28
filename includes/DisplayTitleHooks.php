@@ -1,12 +1,10 @@
 <?php
 
-
 use MediaWiki\Linker\LinkRenderer;
 use MediaWiki\Linker\LinkTarget;
 use MediaWiki\MediaWikiServices;
 
-class DisplayTitleHooks
-{
+class DisplayTitleHooks {
 
 	/**
 	 * Implements ParserFirstCallInit hook.
@@ -14,8 +12,7 @@ class DisplayTitleHooks
 	 * @since 1.0
 	 * @param Parser &$parser the Parser object
 	 */
-	public static function onParserFirstCallInit(&$parser)
-	{
+	public static function onParserFirstCallInit( &$parser ) {
 		$parser->setFunctionHook(
 			'getdisplaytitle',
 			'DisplayTitleHooks::getdisplaytitleParserFunction'
@@ -35,9 +32,9 @@ class DisplayTitleHooks
 		Parser $parser,
 		$pagename
 	) {
-		$title = Title::newFromText($pagename);
-		if ($title !== null) {
-			self::getDisplayTitle($title, $pagename);
+		$title = Title::newFromText( $pagename );
+		if ( $title !== null ) {
+			self::getDisplayTitle( $title, $pagename );
 		}
 		return $pagename;
 	}
@@ -46,7 +43,7 @@ class DisplayTitleHooks
 	 * Handler for PageSaveComplete hook
 	 * @see https://www.mediawiki.org/wiki/Manual:Hooks/PageSaveComplete
 	 * This triggers the purging of all incoming link pages, so the DisplayTitles stay up to date on other pages.
-	 * 
+	 *
 	 * @param WikiPage $wikiPage modified WikiPage
 	 * @param UserIdentity $userIdentity User who edited
 	 * @param string $summary Edit summary
@@ -54,10 +51,16 @@ class DisplayTitleHooks
 	 * @param RevisionRecord $revisionRecord RevisionRecord for the revision that was created
 	 * @param EditResult $editResult
 	 */
-	public static function onPageSaveComplete(WikiPage $wikiPage, MediaWiki\User\UserIdentity $user, string $summary, int $flags, MediaWiki\Revision\RevisionRecord $revisionRecord, MediaWiki\Storage\EditResult $editResult)
-	{
+	public static function onPageSaveComplete(
+		WikiPage $wikiPage,
+		MediaWiki\User\UserIdentity $userIdentity,
+		string $summary,
+		int $flags,
+		MediaWiki\Revision\RevisionRecord $revisionRecord,
+		MediaWiki\Storage\EditResult $editResult
+	) {
 		$job = new DisplayTitlePurgeIncomingLinksJob( [ 'pageid' => $wikiPage->getId() ] );
-		JobQueueGroup::singleton()->lazyPush([ $job ]);
+		JobQueueGroup::singleton()->lazyPush( [ $job ] );
 	}
 
 	// phpcs:disable MediaWiki.NamingConventions.LowerCamelFunctionsName.FunctionName
@@ -72,23 +75,22 @@ class DisplayTitleHooks
 	 * @param SkinTemplate $skin SkinTemplate object providing context
 	 * @param array &$links The array of arrays of URLs set up so far
 	 */
-	public static function onSkinTemplateNavigation__Universal(SkinTemplate $skin, array &$links)
-	{
-		if ($skin->getUser()->isRegistered()) {
+	public static function onSkinTemplateNavigation__Universal( SkinTemplate $skin, array &$links ) {
+		if ( $skin->getUser()->isRegistered() ) {
 			$menu_urls = $links['user-menu'] ?? [];
-			if (isset($menu_urls['userpage'])) {
+			if ( isset( $menu_urls['userpage'] ) ) {
 				$pagename = $menu_urls['userpage']['text'];
 				$title = $skin->getUser()->getUserPage();
-				self::getDisplayTitle($title, $pagename);
+				self::getDisplayTitle( $title, $pagename );
 				$links['user-menu']['userpage']['text'] = $pagename;
 			}
 			$page_urls = $links['user-page'] ?? [];
-			if (isset($page_urls['userpage'])) {
+			if ( isset( $page_urls['userpage'] ) ) {
 				// If we determined $pagename already, don't do so again.
-				if (!isset($menu_urls['userpage'])) {
+				if ( !isset( $menu_urls['userpage'] ) ) {
 					$pagename = $page_urls['userpage']['text'];
 					$title = $skin->getUser()->getUserPage();
-					self::getDisplayTitle($title, $pagename);
+					self::getDisplayTitle( $title, $pagename );
 				}
 				$links['user-page']['userpage']['text'] = $pagename;
 			}
@@ -117,14 +119,14 @@ class DisplayTitleHooks
 	) {
 		// Do not use DisplayTitle if current page is defined in $wgDisplayTitleExcludes
 		$config = MediaWikiServices::getInstance()->getMainConfig();
-		$request = $config->get('Request');
-		$title = $request->getVal('title');
-		if (in_array($title, $GLOBALS['wgDisplayTitleExcludes'])) {
+		$request = $config->get( 'Request' );
+		$title = $request->getVal( 'title' );
+		if ( in_array( $title, $GLOBALS['wgDisplayTitleExcludes'] ) ) {
 			return;
 		}
 
-		$title = Title::newFromLinkTarget($target);
-		self::handleLink($title, $text, true);
+		$title = Title::newFromLinkTarget( $target );
+		self::handleLink( $title, $text, true );
 	}
 
 	/**
@@ -148,13 +150,13 @@ class DisplayTitleHooks
 	) {
 		// Do not use DisplayTitle if current page is defined in $wgDisplayTitleExcludes
 		$config = MediaWikiServices::getInstance()->getMainConfig();
-		$request = $config->get('Request');
-		$title = $request->getVal('title');
-		if (in_array($title, $GLOBALS['wgDisplayTitleExcludes'])) {
+		$request = $config->get( 'Request' );
+		$title = $request->getVal( 'title' );
+		if ( in_array( $title, $GLOBALS['wgDisplayTitleExcludes'] ) ) {
 			return;
 		}
 
-		self::handleLink($nt, $html, false);
+		self::handleLink( $nt, $html, false );
 	}
 
 	/**
@@ -170,38 +172,37 @@ class DisplayTitleHooks
 	 * @param string|HtmlArmor &$html the HTML of the link text
 	 * @param bool $wrap whether to wrap result in HtmlArmor
 	 */
-	private static function handleLink(Title $target, &$html, $wrap)
-	{
+	private static function handleLink( Title $target, &$html, $wrap ) {
 		$customized = false;
-		if (isset($html)) {
+		if ( isset( $html ) ) {
 			$text = null;
-			if (is_string($html)) {
-				$text = str_replace('_', ' ', $html);
-			} elseif (is_int($html)) {
-				$text = (string) $html;
-			} elseif ($html instanceof HtmlArmor) {
-				$text = str_replace('_', ' ', HtmlArmor::getHtml($html));
+			if ( is_string( $html ) ) {
+				$text = str_replace( '_', ' ', $html );
+			} elseif ( is_int( $html ) ) {
+				$text = (string)$html;
+			} elseif ( $html instanceof HtmlArmor ) {
+				$text = str_replace( '_', ' ', HtmlArmor::getHtml( $html ) );
 			}
 
 			// handle named Semantic MediaWiki subobjects (see T275984) by removing trailing fragment
 			// skip fragment detection on category pages
 			$fragment = '#' . $target->getFragment();
-			if ($fragment !== '#' && $target->getNamespace() != NS_CATEGORY) {
-				$fragmentLength = strlen($fragment);
-				if (substr($text, -$fragmentLength) === $fragment) {
+			if ( $fragment !== '#' && $target->getNamespace() != NS_CATEGORY ) {
+				$fragmentLength = strlen( $fragment );
+				if ( substr( $text, -$fragmentLength ) === $fragment ) {
 					// Remove fragment text from the link text
-					$textTitle = substr($text, 0, -$fragmentLength);
-					$textFragment = substr($fragment, 1);
+					$textTitle = substr( $text, 0, -$fragmentLength );
+					$textFragment = substr( $fragment, 1 );
 				} else {
 					$textTitle = $text;
 					$textFragment = '';
 				}
-				if ($textTitle === '' || $textFragment === '') {
+				if ( $textTitle === '' || $textFragment === '' ) {
 					$customized = true;
 				} else {
 					$text = $textTitle;
-					if ($wrap) {
-						$html = new HtmlArmor($text);
+					if ( $wrap ) {
+						$html = new HtmlArmor( $text );
 					}
 					$customized = $text != $target->getPrefixedText() && $text != $target->getText();
 				}
@@ -211,8 +212,8 @@ class DisplayTitleHooks
 					&& $text != $target->getText();
 			}
 		}
-		if (!$customized) {
-			self::getDisplayTitle($target, $html, $wrap);
+		if ( !$customized ) {
+			self::getDisplayTitle( $target, $html, $wrap );
 		}
 	}
 
@@ -225,26 +226,25 @@ class DisplayTitleHooks
 	 * @param OutputPage &$out the OutputPage object
 	 * @param Skin &$sk the Skin object
 	 */
-	public static function onBeforePageDisplay(OutputPage &$out, Skin &$sk)
-	{
-		if ($GLOBALS['wgDisplayTitleHideSubtitle']) {
+	public static function onBeforePageDisplay( OutputPage &$out, Skin &$sk ) {
+		if ( $GLOBALS['wgDisplayTitleHideSubtitle'] ) {
 			return;
 		}
 		$title = $out->getTitle();
-		if (!$title->isTalkPage()) {
-			$found = self::getDisplayTitle($title, $displaytitle);
-		} elseif ($title->getSubjectPage()->exists()) {
-			$found = self::getDisplayTitle($title->getSubjectPage(), $displaytitle);
+		if ( !$title->isTalkPage() ) {
+			$found = self::getDisplayTitle( $title, $displaytitle );
+		} elseif ( $title->getSubjectPage()->exists() ) {
+			$found = self::getDisplayTitle( $title->getSubjectPage(), $displaytitle );
 		} else {
 			$found = false;
 		}
-		if ($found) {
+		if ( $found ) {
 			$subtitle = $title->getPrefixedText();
 			$old_subtitle = $out->getSubtitle();
-			if ($old_subtitle !== '') {
+			if ( $old_subtitle !== '' ) {
 				$subtitle .= ' / ' . $old_subtitle;
 			}
-			$out->setSubtitle($subtitle);
+			$out->setSubtitle( $subtitle );
 		}
 	}
 
@@ -268,13 +268,13 @@ class DisplayTitleHooks
 			$title !== null && $title->isTalkPage() &&
 			$title->getSubjectPage()->exists()
 		) {
-			$found = self::getDisplayTitle($title->getSubjectPage(), $displaytitle);
-			if ($found) {
+			$found = self::getDisplayTitle( $title->getSubjectPage(), $displaytitle );
+			if ( $found ) {
 				$displaytitle = wfMessage(
 					'displaytitle-talkpagetitle',
 					$displaytitle
 				)->plain();
-				$parser->getOutput()->setTitleText($displaytitle);
+				$parser->getOutput()->setTitleText( $displaytitle );
 			}
 		}
 	}
@@ -288,9 +288,8 @@ class DisplayTitleHooks
 	 * @param string $engine engine in use
 	 * @param array &$extraLibraries list of registered libraries
 	 */
-	public static function onScribuntoExternalLibraries($engine, array &$extraLibraries)
-	{
-		if ($engine === 'lua') {
+	public static function onScribuntoExternalLibraries( $engine, array &$extraLibraries ) {
+		if ( $engine === 'lua' ) {
 			$extraLibraries['mw.ext.displaytitle'] = 'DisplayTitleLuaLibrary';
 		}
 	}
@@ -310,51 +309,51 @@ class DisplayTitleHooks
 		&$displaytitle,
 		$wrap = false
 	) {
-		$title = $title->createFragmentTarget('');
+		$title = $title->createFragmentTarget( '' );
 
-		if (!$title->canExist()) {
+		if ( !$title->canExist() ) {
 			// If the Title isn't a valid content page (e.g. Special:UserLogin), just return.
 			return false;
 		}
 
 		$originalPageName = $title->getPrefixedText();
-		if (method_exists(MediaWikiServices::class, 'getWikiPageFactory')) {
+		if ( method_exists( MediaWikiServices::class, 'getWikiPageFactory' ) ) {
 			// MW 1.36+
-			$wikipage = MediaWikiServices::getInstance()->getWikiPageFactory()->newFromTitle($title);
+			$wikipage = MediaWikiServices::getInstance()->getWikiPageFactory()->newFromTitle( $title );
 		} else {
-			$wikipage = new WikiPage($title);
+			$wikipage = new WikiPage( $title );
 		}
 		$redirect = false;
-		if ($GLOBALS['wgDisplayTitleFollowRedirects']) {
+		if ( $GLOBALS['wgDisplayTitleFollowRedirects'] ) {
 			$redirectTarget = $wikipage->getRedirectTarget();
-			if ($redirectTarget !== null) {
+			if ( $redirectTarget !== null ) {
 				$redirect = true;
 				$title = $redirectTarget;
 			}
 		}
 		$id = $title->getArticleID();
-		if (method_exists(MediaWikiServices::class, 'getPageProps')) {
+		if ( method_exists( MediaWikiServices::class, 'getPageProps' ) ) {
 			// MW 1.36+
-			$values = MediaWikiServices::getInstance()->getPageProps()->getProperties($title, 'displaytitle');
+			$values = MediaWikiServices::getInstance()->getPageProps()->getProperties( $title, 'displaytitle' );
 		} else {
-			$values = PageProps::getInstance()->getProperties($title, 'displaytitle');
+			$values = PageProps::getInstance()->getProperties( $title, 'displaytitle' );
 		}
-		if (array_key_exists($id, $values)) {
+		if ( array_key_exists( $id, $values ) ) {
 			$value = $values[$id];
 			if (
-				trim(str_replace('&#160;', '', strip_tags($value))) !== '' &&
+				trim( str_replace( '&#160;', '', strip_tags( $value ) ) ) !== '' &&
 				$value !== $originalPageName
 			) {
 				$displaytitle = $value;
-				if ($wrap) {
-					$displaytitle = new HtmlArmor($displaytitle);
+				if ( $wrap ) {
+					$displaytitle = new HtmlArmor( $displaytitle );
 				}
 				return true;
 			}
-		} elseif ($redirect) {
+		} elseif ( $redirect ) {
 			$displaytitle = $title->getPrefixedText();
-			if ($wrap) {
-				$displaytitle = new HtmlArmor($displaytitle);
+			if ( $wrap ) {
+				$displaytitle = new HtmlArmor( $displaytitle );
 			}
 			return true;
 		}
