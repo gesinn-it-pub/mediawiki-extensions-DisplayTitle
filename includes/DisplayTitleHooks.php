@@ -3,6 +3,7 @@
 use MediaWiki\Linker\LinkRenderer;
 use MediaWiki\Linker\LinkTarget;
 use MediaWiki\MediaWikiServices;
+use MediaWiki\Revision\RenderedRevision;
 
 class DisplayTitleHooks {
 
@@ -34,33 +35,52 @@ class DisplayTitleHooks {
 	) {
 		$title = Title::newFromText( $pagename );
 		if ( $title !== null ) {
-			self::getDisplayTitle( $title, $pagename );
+				self::getDisplayTitle( $title, $pagename );
 		}
 		return $pagename;
 	}
 
 	/**
-	 * Handler for PageSaveComplete hook
-	 * @see https://www.mediawiki.org/wiki/Manual:Hooks/PageSaveComplete
-	 * This triggers the purging of all incoming link pages, so the DisplayTitles stay up to date on other pages.
+	 * Implements ParserAfterParse hook.
+	 * See https://www.mediawiki.org/wiki/Manual:Hooks/ParserAfterParse
 	 *
-	 * @param WikiPage $wikiPage modified WikiPage
-	 * @param UserIdentity $userIdentity User who edited
-	 * @param string $summary Edit summary
-	 * @param int $flags Edit flags
-	 * @param RevisionRecord $revisionRecord RevisionRecord for the revision that was created
-	 * @param EditResult $editResult
+	 * @param Parser $parser
+	 * @param mixed &$text
+	 * @param StripState $stripState
+	 * @return void
 	 */
-	public static function onPageSaveComplete(
-		WikiPage $wikiPage,
-		MediaWiki\User\UserIdentity $userIdentity,
-		string $summary,
-		int $flags,
-		MediaWiki\Revision\RevisionRecord $revisionRecord,
-		MediaWiki\Storage\EditResult $editResult
-	) {
-		$job = new DisplayTitlePurgeIncomingLinksJob( [ 'pageid' => $wikiPage->getId() ] );
-		JobQueueGroup::singleton()->lazyPush( [ $job ] );
+	public static function onParserAfterParse( Parser $parser, &$text, StripState $stripState ) {
+		if ( self::getDisplayTitle( $parser->getTitle(), $oldDisplayTitle ) === false ) {
+			$oldDisplayTitle = false;
+		}
+		$newDisplayTitle = $parser->getOutput()->getDisplayTitle();
+
+		if ( $oldDisplayTitle !== $newDisplayTitle ) {
+			$parser->getOutput()->setExtensionData( 'displayTitle', [
+				'displayTitleChanged' => true
+			] );
+		}
+	}
+
+	/**
+	 * Implements RevisionDataUpdates hook.
+	 * See https://www.mediawiki.org/wiki/Manual:Hooks/RevisionDataUpdates
+	 *
+	 * @param Title $title
+	 * @param RenderedRevision $renderedRevision
+	 * @return void
+	 */
+	public function onRevisionDataUpdates( Title $title, RenderedRevision $renderedRevision ) {
+		$output = $renderedRevision->getRevisionParserOutput();
+		$displayTitleData = $output->getExtensionData( 'displayTitle' );
+
+		if ( $displayTitleData && array_key_exists( 'displayTitleChanged', $displayTitleData ) ) {
+			if ( $displayTitleData[ 'displayTitleChanged' ] ) {
+				JobQueueGroup::singleton()->lazyPush( [
+					new DisplayTitlePurgeIncomingLinksJob( [ 'pageid' => $title->getId() ] )
+				] );
+			}
+		}
 	}
 
 	// phpcs:disable MediaWiki.NamingConventions.LowerCamelFunctionsName.FunctionName
