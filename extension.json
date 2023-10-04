@@ -34,7 +34,8 @@
 		"HtmlPageLinkRendererBegin": "DisplayTitleHooks::onHtmlPageLinkRendererBegin",
 		"ScribuntoExternalLibraries": "DisplayTitleHooks::onScribuntoExternalLibraries",
 		"SelfLinkBegin": "DisplayTitleHooks::onSelfLinkBegin",
-		"PageSaveComplete": "DisplayTitleHooks::onPageSaveComplete"
+		"ParserAfterParse": "DisplayTitleHooks::onParserAfterParse",
+		"RevisionDataUpdates": "DisplayTitleHooks::onRevisionDataUpdates"
 	},
 	"JobClasses": {
 		"DisplayTitlePurgeIncomingLinksJob": "DisplayTitlePurgeIncomingLinksJob"
