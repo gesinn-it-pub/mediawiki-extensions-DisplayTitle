@@ -11,6 +11,9 @@
 			"minus-x check .",
 			"@phpcs"
 		],
+		"test-coverage": [
+			"@test"
+		],
 		"fix": [
 			"minus-x fix .",
 			"phpcbf"
