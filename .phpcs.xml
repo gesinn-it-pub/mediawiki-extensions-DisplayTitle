@@ -4,4 +4,6 @@
 	<file>.</file>
 	<arg name="extensions" value="php" />
 	<arg name="encoding" value="UTF-8" />
+	<exclude-pattern>.phan/</exclude-pattern>
+	<exclude-pattern>vendor/</exclude-pattern>
 </ruleset>

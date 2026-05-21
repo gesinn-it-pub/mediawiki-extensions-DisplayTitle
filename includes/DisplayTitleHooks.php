@@ -50,7 +50,9 @@ class DisplayTitleHooks {
 	 * @return void
 	 */
 	public static function onParserAfterParse( Parser $parser, &$text, StripState $stripState ) {
-		if ( self::getDisplayTitle( $parser->getTitle(), $oldDisplayTitle ) === false ) {
+		$parserTitle = $parser->getTitle();
+		$oldDisplayTitle = '';
+		if ( $parserTitle === null || self::getDisplayTitle( $parserTitle, $oldDisplayTitle ) === false ) {
 			$oldDisplayTitle = false;
 		}
 		$newDisplayTitle = $parser->getOutput()->getDisplayTitle();
@@ -98,6 +100,7 @@ class DisplayTitleHooks {
 	public static function onSkinTemplateNavigation__Universal( SkinTemplate $skin, array &$links ) {
 		if ( $skin->getUser()->isRegistered() ) {
 			$menu_urls = $links['user-menu'] ?? [];
+			$pagename = '';
 			if ( isset( $menu_urls['userpage'] ) ) {
 				$pagename = $menu_urls['userpage']['text'];
 				$title = $skin->getUser()->getUserPage();
@@ -209,7 +212,7 @@ class DisplayTitleHooks {
 			$fragment = '#' . $target->getFragment();
 			if ( $fragment !== '#' && $target->getNamespace() != NS_CATEGORY ) {
 				$fragmentLength = strlen( $fragment );
-				if ( substr( $text, -$fragmentLength ) === $fragment ) {
+				if ( $text !== null && substr( $text, -$fragmentLength ) === $fragment ) {
 					// Remove fragment text from the link text
 					$textTitle = substr( $text, 0, -$fragmentLength );
 					$textFragment = substr( $fragment, 1 );
