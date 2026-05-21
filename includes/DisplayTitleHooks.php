@@ -2,16 +2,18 @@
 
 namespace MediaWiki\Extension\DisplayTitle;
 
-use Config;
 use HtmlArmor;
 use MediaWiki\Hook\BeforePageDisplayHook;
 use MediaWiki\Hook\OutputPageParserOutputHook;
+use MediaWiki\Hook\ParserAfterParseHook;
 use MediaWiki\Hook\ParserFirstCallInitHook;
 use MediaWiki\Hook\SelfLinkBeginHook;
 use MediaWiki\Hook\SkinTemplateNavigation__UniversalHook;
 use MediaWiki\Linker\Hook\HtmlPageLinkRendererBeginHook;
 use MediaWiki\Linker\LinkRenderer;
 use MediaWiki\Linker\LinkTarget;
+use MediaWiki\MediaWikiServices;
+use MediaWiki\Storage\Hook\RevisionDataUpdatesHook;
 use NamespaceInfo;
 use OutputPage;
 use Parser;
@@ -19,21 +21,19 @@ use ParserOutput;
 use RequestContext;
 use Skin;
 use SkinTemplate;
+use StripState;
 use Title;
 
 class DisplayTitleHooks implements
 	ParserFirstCallInitHook,
+	ParserAfterParseHook,
 	BeforePageDisplayHook,
 	HtmlPageLinkRendererBeginHook,
 	OutputPageParserOutputHook,
 	SelfLinkBeginHook,
-	SkinTemplateNavigation__UniversalHook
+	SkinTemplateNavigation__UniversalHook,
+	RevisionDataUpdatesHook
 {
-	/**
-	 * @var Config
-	 */
-	private $config;
-
 	/**
 	 * @var DisplayTitleService
 	 */
@@ -45,16 +45,13 @@ class DisplayTitleHooks implements
 	private $namespaceInfo;
 
 	/**
-	 * @param Config $config
 	 * @param DisplayTitleService $displayTitleService
 	 * @param NamespaceInfo $namespaceInfo
 	 */
 	public function __construct(
-		Config $config,
 		DisplayTitleService $displayTitleService,
 		NamespaceInfo $namespaceInfo
 	) {
-		$this->config = $config;
 		$this->displayTitleService = $displayTitleService;
 		$this->namespaceInfo = $namespaceInfo;
 	}
@@ -83,10 +80,58 @@ class DisplayTitleHooks implements
 	 */
 	public function getdisplaytitleParserFunction( Parser $parser, string $pagename ): string {
 		$title = Title::newFromText( $pagename );
+		$originalPagename = $pagename;
 		if ( $title !== null ) {
 			$this->displayTitleService->getDisplayTitle( $title, $pagename );
 		}
+		if ( $pagename === null ) {
+			return $originalPagename;
+		}
 		return $pagename;
+	}
+
+	/**
+	 * Implements ParserAfterParse hook.
+	 * See https://www.mediawiki.org/wiki/Manual:Hooks/ParserAfterParse
+	 * Detects display title changes to trigger a purge of incoming links.
+	 *
+	 * @since 1.6
+	 * @param Parser $parser the Parser object
+	 * @param string &$text the parser output text
+	 * @param StripState $stripState the StripState object
+	 */
+	public function onParserAfterParse( $parser, &$text, $stripState ): void {
+		$parserTitle = $parser->getTitle();
+		$oldDisplayTitle = '';
+		$this->displayTitleService->getDisplayTitle( $parserTitle, $oldDisplayTitle );
+		$newDisplayTitle = $parser->getOutput()->getDisplayTitle();
+
+		if ( $oldDisplayTitle !== $newDisplayTitle ) {
+			$parser->getOutput()->setExtensionData( 'displayTitle', [
+				'displayTitleChanged' => true
+			] );
+		}
+	}
+
+	/**
+	 * Implements RevisionDataUpdates hook.
+	 * See https://www.mediawiki.org/wiki/Manual:Hooks/RevisionDataUpdates
+	 * Pushes a purge job for incoming links when the display title changes.
+	 *
+	 * @since 1.6
+	 * @param Title $title the Title of the page being saved
+	 * @param \MediaWiki\Revision\RenderedRevision $renderedRevision the rendered revision
+	 * @param \DeferrableUpdate[] &$updates list of DeferrableUpdate objects
+	 */
+	public function onRevisionDataUpdates( $title, $renderedRevision, &$updates ): void {
+		$output = $renderedRevision->getRevisionParserOutput();
+		$displayTitleData = $output->getExtensionData( 'displayTitle' );
+
+		if ( $displayTitleData !== null && !empty( $displayTitleData['displayTitleChanged'] ) ) {
+			MediaWikiServices::getInstance()->getJobQueueGroup()->lazyPush(
+				new DisplayTitlePurgeIncomingLinksJob( [ 'pageid' => $title->getId() ] )
+			);
+		}
 	}
 
 	// phpcs:disable MediaWiki.NamingConventions.LowerCamelFunctionsName.FunctionName
@@ -102,6 +147,7 @@ class DisplayTitleHooks implements
 	 * @param array &$links The array of arrays of URLs set up so far
 	 */
 	public function onSkinTemplateNavigation__Universal( $sktemplate, &$links ): void {
+		$pagename = null;
 		if ( $sktemplate->getUser()->isRegistered() ) {
 			$menu_urls = $links['user-menu'] ?? [];
 			if ( isset( $menu_urls['userpage'] ) ) {
@@ -113,7 +159,7 @@ class DisplayTitleHooks implements
 			$page_urls = $links['user-page'] ?? [];
 			if ( isset( $page_urls['userpage'] ) ) {
 				// If we determined $pagename already, don't do so again.
-				if ( !isset( $menu_urls['userpage'] ) ) {
+				if ( $pagename === null ) {
 					$pagename = $page_urls['userpage']['text'];
 					$title = $sktemplate->getUser()->getUserPage();
 					$this->displayTitleService->getDisplayTitle( $title, $pagename );
@@ -123,6 +169,8 @@ class DisplayTitleHooks implements
 		}
 	}
 
+	// phpcs:enable MediaWiki.NamingConventions.LowerCamelFunctionsName.FunctionName
+
 	/**
 	 * Implements HtmlPageLinkRendererBegin hook.
 	 * See https://www.mediawiki.org/wiki/Manual:Hooks/HtmlPageLinkRendererBegin
@@ -131,14 +179,14 @@ class DisplayTitleHooks implements
 	 * @since 1.4
 	 * @param LinkRenderer $linkRenderer the LinkRenderer object
 	 * @param LinkTarget $target the LinkTarget that the link is pointing to
-	 * @param string|HtmlArmor &$text the contents that the <a> tag should have
-	 * @param array &$customAttribs the HTML attributes that the <a> tag should have
-	 * @param string &$query the query string to add to the generated URL
+	 * @param string|null|HtmlArmor &$text the contents that the <a> tag should have
+	 * @param string[] &$customAttribs the HTML attributes that the <a> tag should have
+	 * @param string[] &$query the query string to add to the generated URL
 	 * @param string &$ret the value to return if the hook returns false
 	 */
 	public function onHtmlPageLinkRendererBegin( $linkRenderer, $target, &$text, &$customAttribs, &$query, &$ret ) {
-		$title = RequestContext::getMain()->getTitle();
-		if ( $title ) {
+		if ( RequestContext::getMain()->hasTitle() ) {
+			$title = RequestContext::getMain()->getTitle();
 			$this->displayTitleService->handleLink(
 				$title->getPrefixedText(),
 				Title::newFromLinkTarget( $target ),
@@ -204,7 +252,8 @@ class DisplayTitleHooks implements
 	/**
 	 * Implements ScribuntoExternalLibraries hook.
 	 * See https://www.mediawiki.org/wiki/Extension:Scribunto#Other_pages
-	 * Handle Scribunto integration
+	 * Handle Scribunto integration.
+	 * Registered as a static callback for compatibility with MW 1.39+.
 	 *
 	 * @since 1.2
 	 * @param string $engine engine in use

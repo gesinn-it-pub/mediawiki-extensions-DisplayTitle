@@ -1,6 +1,6 @@
 {
 	"name": "DisplayTitle",
-	"version": "4.0.2",
+	"version": "4.2.0",
 	"author": [
 		"[https://www.mediawiki.org/wiki/User:Cindy.cicalese Cindy Cicalese]",
 		"[https://www.semantic-mediawiki.org/wiki/User:Oetterer Tobias Oetterer]"
@@ -30,7 +30,6 @@
 		"main": {
 			"class": "MediaWiki\\Extension\\DisplayTitle\\DisplayTitleHooks",
 			"services": [
-				"MainConfig",
 				"DisplayTitleService",
 				"NamespaceInfo"
 			]
@@ -38,12 +37,17 @@
 	},
 	"Hooks": {
 		"ParserFirstCallInit": "main",
+		"ParserAfterParse": "main",
 		"BeforePageDisplay": "main",
 		"HtmlPageLinkRendererBegin": "main",
 		"OutputPageParserOutput": "main",
+		"RevisionDataUpdates": "main",
 		"SelfLinkBegin": "main",
 		"SkinTemplateNavigation::Universal": "main",
 		"ScribuntoExternalLibraries": "MediaWiki\\Extension\\DisplayTitle\\DisplayTitleHooks::onScribuntoExternalLibraries"
+	},
+	"JobClasses": {
+		"DisplayTitlePurgeIncomingLinksJob": "MediaWiki\\Extension\\DisplayTitle\\DisplayTitlePurgeIncomingLinksJob"
 	},
 	"config": {
 		"DisplayTitleHideSubtitle": {
@@ -58,3 +62,4 @@
 	},
 	"manifest_version": 2
 }
+

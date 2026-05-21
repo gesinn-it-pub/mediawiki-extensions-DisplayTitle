@@ -4,7 +4,6 @@ namespace MediaWiki\Extension\DisplayTitle;
 
 use CoreParserFunctions;
 use MediaWiki\MediaWikiServices;
-use Scribunto_LuaLibraryBase;
 use Title;
 
 /**
@@ -15,7 +14,7 @@ use Title;
  * @since 1.2
  * @author Tobias Oetterer < oetterer@uni-paderborn.de >
  */
-class DisplayTitleLuaLibrary extends Scribunto_LuaLibraryBase {
+class DisplayTitleLuaLibrary extends LuaLibraryBase {
 	/**
 	 * Called to register the library.
 	 *
@@ -31,7 +30,7 @@ class DisplayTitleLuaLibrary extends Scribunto_LuaLibraryBase {
 			'set'   => [ $this, 'setDisplayTitle' ],
 		];
 
-		return $this->getEngine()->registerInterface( __DIR__ . '/' . 'displaytitle.lua',	$lib, [] );
+		return $this->getEngine()->registerInterface( __DIR__ . '/' . 'displaytitle.lua', $lib, [] );
 	}
 
 	/**
