@@ -5,6 +5,8 @@ use MediaWiki\MediaWikiServices;
 /**
  * @covers DisplayTitleHooks::onHtmlPageLinkRendererBegin
  * @covers DisplayTitleHooks::onSelfLinkBegin
+ * @covers DisplayTitleHooks::handleLink
+ * @covers DisplayTitleHooks::getDisplayTitle
  * @group Database
  */
 class DisplayTitleTest extends MediaWikiIntegrationTestCase {

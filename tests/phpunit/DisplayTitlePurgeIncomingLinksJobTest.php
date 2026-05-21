@@ -6,7 +6,9 @@ declare( strict_types=1 );
  * Tests for DisplayTitlePurgeIncomingLinksJob.
  *
  * @group Database
+ * @covers DisplayTitlePurgeIncomingLinksJob::__construct
  * @covers DisplayTitlePurgeIncomingLinksJob::run
+ * @covers DisplayTitlePurgeIncomingLinksJob::getIncomingLinks
  */
 class DisplayTitlePurgeIncomingLinksJobTest extends MediaWikiIntegrationTestCase {
 
@@ -49,6 +51,23 @@ class DisplayTitlePurgeIncomingLinksJobTest extends MediaWikiIntegrationTestCase
 			$linkingTitle->getTouched(),
 			'Linking page should have been touched by the purge'
 		);
+	}
+
+	public function testRunHandlesTemplateAndRedirectIncomingLinks(): void {
+		$targetName = 'DisplayTitleJobTargetTest03';
+		$this->editPage( $targetName, '{{DISPLAYTITLE:Template And Redirect Target}}' );
+
+		// Templatelinks: a page that transcludes the target page
+		$this->editPage( 'DisplayTitleJobTemplateUserTest03', '{{' . $targetName . '}}' );
+
+		// Redirect table: a page that redirects to the target page
+		$this->editPage( 'DisplayTitleJobRedirectTest03', '#REDIRECT [[' . $targetName . ']]' );
+
+		$pageId = Title::newFromText( $targetName )->getArticleID();
+
+		$job = new DisplayTitlePurgeIncomingLinksJob( [ 'pageid' => $pageId ] );
+
+		$this->assertTrue( $job->run() );
 	}
 
 }
