@@ -22,7 +22,6 @@
 			"@phpunit"
 		],
 		"test-coverage": [
-			"@analyze",
 			"@phpunit-coverage"
 		],
 		"analyze": [
