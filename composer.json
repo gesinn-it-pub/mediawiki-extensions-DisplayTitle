@@ -21,6 +21,10 @@
 			"@analyze",
 			"@phpunit"
 		],
+		"test-coverage": [
+			"@analyze",
+			"@phpunit-coverage"
+		],
 		"analyze": [
 			"@lint",
 			"@phpcs",
@@ -28,7 +32,7 @@
 			"@phan"
 		],
 		"phpunit": "php ../../tests/phpunit/phpunit.php -c phpunit.xml.dist",
-		"phpunit-coverage": "php ../../tests/phpunit/phpunit.php -c phpunit.xml.dist --coverage-clover coverage.xml",
+		"phpunit-coverage": "php ../../tests/phpunit/phpunit.php -c phpunit.xml.dist --coverage-text --coverage-html coverage/php --coverage-clover coverage/php/coverage.xml",
 		"lint": "parallel-lint . --exclude vendor --exclude node_modules",
 		"fix": [
 			"minus-x fix .",
