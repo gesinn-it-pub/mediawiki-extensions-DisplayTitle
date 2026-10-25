@@ -6,6 +6,10 @@ This project adheres to [Semantic Versioning](https://semver.org/) and
 
 ## [Unreleased]
 
+### Fixed
+- Refresh link text on pages linking via a redirect and on category pages when a display title changes [`3b66280`](https://github.com/gesinn-it-pub/mediawiki-extensions-DisplayTitle/commit/3b66280)
+- Stop purging links on every edit of a page whose display title equals its page name [`766d07c`](https://github.com/gesinn-it-pub/mediawiki-extensions-DisplayTitle/commit/766d07c)
+
 ## [5.0.0] - 2026-10-25
 
 Requires MediaWiki 1.43 or newer and brings the extension up to date with upstream. MediaWiki 1.39 remains supported on the `4.x` line (`maint/4.x`).
