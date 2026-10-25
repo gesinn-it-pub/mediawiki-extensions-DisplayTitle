@@ -1,6 +1,6 @@
 {
 	"name": "DisplayTitle",
-	"version": "4.2.0",
+	"version": "5.0.0",
 	"author": [
 		"[https://www.mediawiki.org/wiki/User:Cindy.cicalese Cindy Cicalese]",
 		"[https://www.semantic-mediawiki.org/wiki/User:Oetterer Tobias Oetterer]"
@@ -10,7 +10,7 @@
 	"type": "parserhook",
 	"license-name": "MIT",
 	"requires": {
-		"MediaWiki": ">= 1.39.0"
+		"MediaWiki": ">= 1.43.0"
 	},
 	"MessagesDirs": {
 		"DisplayTitle": [
@@ -33,6 +33,9 @@
 				"DisplayTitleService",
 				"NamespaceInfo"
 			]
+		},
+		"scribunto": {
+			"class": "MediaWiki\\Extension\\DisplayTitle\\ScribuntoHooks"
 		}
 	},
 	"Hooks": {
@@ -44,7 +47,7 @@
 		"RevisionDataUpdates": "main",
 		"SelfLinkBegin": "main",
 		"SkinTemplateNavigation::Universal": "main",
-		"ScribuntoExternalLibraries": "MediaWiki\\Extension\\DisplayTitle\\DisplayTitleHooks::onScribuntoExternalLibraries"
+		"ScribuntoExternalLibraries": "scribunto"
 	},
 	"JobClasses": {
 		"DisplayTitlePurgeIncomingLinksJob": "MediaWiki\\Extension\\DisplayTitle\\DisplayTitlePurgeIncomingLinksJob"
@@ -62,4 +65,3 @@
 	},
 	"manifest_version": 2
 }
-

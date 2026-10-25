@@ -13,16 +13,16 @@ use MediaWiki\Linker\Hook\HtmlPageLinkRendererBeginHook;
 use MediaWiki\Linker\LinkRenderer;
 use MediaWiki\Linker\LinkTarget;
 use MediaWiki\MediaWikiServices;
+use MediaWiki\Output\OutputPage;
 use MediaWiki\Storage\Hook\RevisionDataUpdatesHook;
-use NamespaceInfo;
-use OutputPage;
+use MediaWiki\Title\NamespaceInfo;
+use MediaWiki\Title\Title;
 use Parser;
 use ParserOutput;
 use RequestContext;
 use Skin;
 use SkinTemplate;
 use StripState;
-use Title;
 
 class DisplayTitleHooks implements
 	ParserFirstCallInitHook,
@@ -34,26 +34,10 @@ class DisplayTitleHooks implements
 	SkinTemplateNavigation__UniversalHook,
 	RevisionDataUpdatesHook
 {
-	/**
-	 * @var DisplayTitleService
-	 */
-	private $displayTitleService;
-
-	/**
-	 * @var NamespaceInfo
-	 */
-	private $namespaceInfo;
-
-	/**
-	 * @param DisplayTitleService $displayTitleService
-	 * @param NamespaceInfo $namespaceInfo
-	 */
 	public function __construct(
-		DisplayTitleService $displayTitleService,
-		NamespaceInfo $namespaceInfo
+		private readonly DisplayTitleService $displayTitleService,
+		private readonly NamespaceInfo $namespaceInfo,
 	) {
-		$this->displayTitleService = $displayTitleService;
-		$this->namespaceInfo = $namespaceInfo;
 	}
 
 	/**
@@ -169,8 +153,6 @@ class DisplayTitleHooks implements
 		}
 	}
 
-	// phpcs:enable MediaWiki.NamingConventions.LowerCamelFunctionsName.FunctionName
-
 	/**
 	 * Implements HtmlPageLinkRendererBegin hook.
 	 * See https://www.mediawiki.org/wiki/Manual:Hooks/HtmlPageLinkRendererBegin
@@ -246,22 +228,6 @@ class DisplayTitleHooks implements
 					$parserOutput->setTitleText( $displaytitle );
 				}
 			}
-		}
-	}
-
-	/**
-	 * Implements ScribuntoExternalLibraries hook.
-	 * See https://www.mediawiki.org/wiki/Extension:Scribunto#Other_pages
-	 * Handle Scribunto integration.
-	 * Registered as a static callback for compatibility with MW 1.39+.
-	 *
-	 * @since 1.2
-	 * @param string $engine engine in use
-	 * @param array &$extraLibraries list of registered libraries
-	 */
-	public static function onScribuntoExternalLibraries( string $engine, array &$extraLibraries ) {
-		if ( $engine === 'lua' ) {
-			$extraLibraries['mw.ext.displaytitle'] = DisplayTitleLuaLibrary::class;
 		}
 	}
 }
