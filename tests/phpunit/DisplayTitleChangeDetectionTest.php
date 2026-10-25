@@ -59,6 +59,21 @@ class DisplayTitleChangeDetectionTest extends MediaWikiIntegrationTestCase {
 		$this->assertNull( $this->getExtensionData( 'Dingo Page', '{{DISPLAYTITLE:Zebra}}' ) );
 	}
 
+	public function testDisplayTitleEqualToPageNameIsNotFlagged() {
+		$this->createPage( 'Foo Bar', '{{DISPLAYTITLE:Foo Bar}}' );
+
+		$this->assertNull( $this->getExtensionData( 'Foo Bar', '{{DISPLAYTITLE:Foo Bar}}' ) );
+	}
+
+	public function testRemovedDisplayTitleIsFlagged() {
+		$this->createPage( 'Dingo Page', '{{DISPLAYTITLE:Zebra}}' );
+
+		$this->assertSame(
+			[ 'displayTitleChanged' => true ],
+			$this->getExtensionData( 'Dingo Page', 'No display title any more' )
+		);
+	}
+
 	public function testPageWithoutDisplayTitleIsNotFlagged() {
 		$this->createPage( 'Elephant Page', 'Content' );
 
