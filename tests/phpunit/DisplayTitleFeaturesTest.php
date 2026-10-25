@@ -369,6 +369,22 @@ class DisplayTitleFeaturesTest extends MediaWikiIntegrationTestCase {
 		$this->assertNull( $output->getExtensionData( 'displayTitle' ) );
 	}
 
+	public function testParserAfterParseDoesNotFlagDisplayTitleEqualToPageName() {
+		$this->createPage( 'Foo Bar', '{{DISPLAYTITLE:Foo Bar}}' );
+
+		$output = $this->parse( 'Foo Bar', '{{DISPLAYTITLE:Foo Bar}}' );
+
+		$this->assertNull( $output->getExtensionData( 'displayTitle' ) );
+	}
+
+	public function testParserAfterParseFlagsRemovedDisplayTitle() {
+		$this->createPage( 'Dingo Page', '{{DISPLAYTITLE:Zebra}}' );
+
+		$output = $this->parse( 'Dingo Page', 'No display title any more' );
+
+		$this->assertSame( [ 'displayTitleChanged' => true ], $output->getExtensionData( 'displayTitle' ) );
+	}
+
 	/**
 	 * @dataProvider provideRevisionDataUpdates
 	 */
@@ -396,26 +412,67 @@ class DisplayTitleFeaturesTest extends MediaWikiIntegrationTestCase {
 		yield 'no display title data' => [ null, false ];
 	}
 
-	public function testPurgeJobRunsForPageWithIncomingLinks() {
+	private function setTouched( string $titleText, string $timestamp ): void {
+		$title = Title::newFromText( $titleText );
+		$this->getDb()->newUpdateQueryBuilder()
+			->update( 'page' )
+			->set( [ 'page_touched' => $this->getDb()->timestamp( $timestamp ) ] )
+			->where( [ 'page_namespace' => $title->getNamespace(), 'page_title' => $title->getDBkey() ] )
+			->caller( __METHOD__ )->execute();
+	}
+
+	private function getTouched( string $titleText ): string {
+		return $this->getServiceContainer()->getWikiPageFactory()
+			->newFromTitle( Title::newFromText( $titleText ) )->getTouched();
+	}
+
+	private function runPurgeJob( string $titleText ): void {
+		$job = new DisplayTitlePurgeIncomingLinksJob(
+			[ 'pageid' => Title::newFromText( $titleText )->getArticleID() ]
+		);
+		$this->assertTrue( $job->run() );
+		$this->runJobs();
+	}
+
+	public function testPurgeJobInvalidatesPagesLinkingToThePage() {
 		$this->createPage( 'Dingo Page', '{{DISPLAYTITLE:Zebra}}' );
 		$this->createPage( 'Linking Page', '[[Dingo Page]]' );
-		$linkingPage = $this->getServiceContainer()->getWikiPageFactory()
-			->newFromTitle( Title::newFromText( 'Linking Page' ) );
-		$this->db->newUpdateQueryBuilder()
-			->update( 'page' )
-			->set( [ 'page_touched' => $this->db->timestamp( '20200101000000' ) ] )
-			->where( [ 'page_id' => $linkingPage->getId() ] )
-			->caller( __METHOD__ )->execute();
-		$linkingPage->getTitle()->resetArticleID( $linkingPage->getId() );
+		$this->setTouched( 'Linking Page', '20200101000000' );
 
-		$job = new DisplayTitlePurgeIncomingLinksJob(
-			[ 'pageid' => Title::newFromText( 'Dingo Page' )->getArticleID() ]
-		);
+		$this->runPurgeJob( 'Dingo Page' );
 
-		$this->assertTrue( $job->run() );
-		$touched = $this->getServiceContainer()->getWikiPageFactory()
-			->newFromTitle( Title::newFromText( 'Linking Page' ) )->getTouched();
-		$this->assertGreaterThan( '20200101000000', $touched );
+		$this->assertGreaterThan( '20200101000000', $this->getTouched( 'Linking Page' ) );
+	}
+
+	public function testPurgeJobInvalidatesPagesLinkingViaRedirect() {
+		$this->createPage( 'Dingo Page', '{{DISPLAYTITLE:Zebra}}' );
+		$this->createPage( 'Redirect To Dingo Page', '#REDIRECT [[Dingo Page]]' );
+		$this->createPage( 'Linking Page', '[[Redirect To Dingo Page]]' );
+		$this->setTouched( 'Linking Page', '20200101000000' );
+
+		$this->runPurgeJob( 'Dingo Page' );
+
+		$this->assertGreaterThan( '20200101000000', $this->getTouched( 'Linking Page' ) );
+	}
+
+	public function testPurgeJobInvalidatesCategoriesOfThePage() {
+		$this->createPage( 'Category:Animals', 'Animals' );
+		$this->createPage( 'Dingo Page', '{{DISPLAYTITLE:Zebra}}[[Category:Animals]]' );
+		$this->setTouched( 'Category:Animals', '20200101000000' );
+
+		$this->runPurgeJob( 'Dingo Page' );
+
+		$this->assertGreaterThan( '20200101000000', $this->getTouched( 'Category:Animals' ) );
+	}
+
+	public function testPurgeJobLeavesUnrelatedPagesAlone() {
+		$this->createPage( 'Dingo Page', '{{DISPLAYTITLE:Zebra}}' );
+		$this->createPage( 'Unrelated Page', 'Content' );
+		$this->setTouched( 'Unrelated Page', '20200101000000' );
+
+		$this->runPurgeJob( 'Dingo Page' );
+
+		$this->assertSame( '20200101000000', $this->getTouched( 'Unrelated Page' ) );
 	}
 
 	public function testPurgeJobSucceedsForMissingPage() {

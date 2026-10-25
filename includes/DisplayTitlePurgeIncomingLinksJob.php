@@ -3,17 +3,27 @@
 namespace MediaWiki\Extension\DisplayTitle;
 
 use GenericParameterJob;
+use HTMLCacheUpdateJob;
 use Job;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Title\Title;
 
 /**
- * Job to purge the parser cache of all pages that link to a page whose
- * display title has changed. This ensures that cached link text is refreshed.
+ * Job to invalidate the cached output of all pages that show the display title
+ * of a page whose display title has changed. This ensures that cached link text
+ * and category listings are refreshed.
+ *
+ * Besides pages that link to, transclude or embed the changed page, this covers
+ * pages that link to a redirect to the changed page (the link text follows the
+ * redirect) and the categories the changed page is a member of.
  *
  * @since 1.6
  */
 class DisplayTitlePurgeIncomingLinksJob extends Job implements GenericParameterJob {
+
+	private const LINK_TABLES = [ 'pagelinks', 'templatelinks', 'imagelinks' ];
+
+	private const REDIRECT_LINK_TABLES = [ 'pagelinks', 'templatelinks' ];
 
 	/**
 	 * @param array $params Job parameters; must contain 'pageid'
@@ -23,7 +33,7 @@ class DisplayTitlePurgeIncomingLinksJob extends Job implements GenericParameterJ
 	}
 
 	/**
-	 * Run the job: purge all pages with incoming links to the changed page.
+	 * Run the job: queue the invalidation of all pages affected by the changed display title.
 	 *
 	 * @return bool success
 	 */
@@ -34,20 +44,31 @@ class DisplayTitlePurgeIncomingLinksJob extends Job implements GenericParameterJ
 		}
 
 		$services = MediaWikiServices::getInstance();
-		$wikiPageFactory = $services->getWikiPageFactory();
-		$backlinkCacheFactory = $services->getBacklinkCacheFactory();
-		$backlinkCache = $backlinkCacheFactory->getBacklinkCache( $title );
+		$backlinkCache = $services->getBacklinkCacheFactory()->getBacklinkCache( $title );
 
-		$purged = [];
-		foreach ( [ 'pagelinks', 'templatelinks', 'imagelinks' ] as $table ) {
-			foreach ( $backlinkCache->getLinkPages( $table ) as $linkedPage ) {
-				$pageId = $linkedPage->getId();
-				if ( !isset( $purged[$pageId] ) ) {
-					$wikiPageFactory->newFromTitle( $linkedPage )->doPurge();
-					$purged[$pageId] = true;
-				}
+		$jobs = [];
+		foreach ( self::LINK_TABLES as $table ) {
+			$jobs[] = HTMLCacheUpdateJob::newForBacklinks( $title, $table );
+		}
+
+		// Links to a redirect show the display title of its target
+		foreach ( $backlinkCache->getLinkPages( 'redirect' ) as $redirectPage ) {
+			$redirect = Title::newFromPageIdentity( $redirectPage );
+			$redirect->invalidateCache();
+			foreach ( self::REDIRECT_LINK_TABLES as $table ) {
+				$jobs[] = HTMLCacheUpdateJob::newForBacklinks( $redirect, $table );
 			}
 		}
+
+		// Category pages list their members by display title
+		foreach ( array_keys( $title->getParentCategories() ) as $categoryText ) {
+			$category = Title::newFromText( $categoryText );
+			if ( $category !== null ) {
+				$category->invalidateCache();
+			}
+		}
+
+		$services->getJobQueueGroup()->push( $jobs );
 
 		return true;
 	}
