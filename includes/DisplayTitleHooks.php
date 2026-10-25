@@ -104,7 +104,8 @@ class DisplayTitleHooks implements
 		$parserTitle = $parser->getTitle();
 		$oldDisplayTitle = '';
 		$this->displayTitleService->getDisplayTitle( $parserTitle, $oldDisplayTitle );
-		$newDisplayTitle = $parser->getOutput()->getDisplayTitle();
+		// getDisplayTitle() returns false if the page has no display title
+		$newDisplayTitle = (string)$parser->getOutput()->getDisplayTitle();
 
 		if ( $oldDisplayTitle !== $newDisplayTitle ) {
 			$parser->getOutput()->setExtensionData( 'displayTitle', [
