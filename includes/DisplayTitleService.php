@@ -168,7 +168,6 @@ class DisplayTitleService {
 			}
 		}
 		if ( !$customized ) {
-			// @phan-suppress-next-line PhanTypeMismatchArgumentNullable
 			$this->getDisplayTitle( $target, $html, $wrap );
 		}
 	}
