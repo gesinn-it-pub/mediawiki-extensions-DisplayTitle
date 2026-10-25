@@ -430,9 +430,6 @@ class DisplayTitleFeaturesTest extends MediaWikiIntegrationTestCase {
 	 * @covers \MediaWiki\Extension\DisplayTitle\ScribuntoHooks
 	 */
 	public function testScribuntoHooksRegisterLuaLibrary() {
-		if ( !interface_exists( 'MediaWiki\\Extension\\Scribunto\\Hooks\\ScribuntoExternalLibrariesHook' ) ) {
-			$this->markTestSkipped( 'Scribunto is not installed' );
-		}
 		$libraries = [];
 
 		( new ScribuntoHooks() )->onScribuntoExternalLibraries( 'lua', $libraries );
@@ -444,9 +441,6 @@ class DisplayTitleFeaturesTest extends MediaWikiIntegrationTestCase {
 	 * @covers \MediaWiki\Extension\DisplayTitle\ScribuntoHooks
 	 */
 	public function testScribuntoHooksIgnoreOtherEngines() {
-		if ( !interface_exists( 'MediaWiki\\Extension\\Scribunto\\Hooks\\ScribuntoExternalLibrariesHook' ) ) {
-			$this->markTestSkipped( 'Scribunto is not installed' );
-		}
 		$libraries = [];
 
 		( new ScribuntoHooks() )->onScribuntoExternalLibraries( 'other', $libraries );

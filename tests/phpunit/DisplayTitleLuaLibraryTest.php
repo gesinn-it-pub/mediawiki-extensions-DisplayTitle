@@ -29,9 +29,6 @@ LUA;
 
 	public function setUp(): void {
 		parent::setUp();
-		if ( !class_exists( 'MediaWiki\\Extension\\Scribunto\\Engines\\LuaCommon\\LibraryBase' ) ) {
-			$this->markTestSkipped( 'Scribunto is not installed' );
-		}
 		$this->overrideConfigValues( [
 			'AllowDisplayTitle' => true,
 			'RestrictDisplayTitle' => false
