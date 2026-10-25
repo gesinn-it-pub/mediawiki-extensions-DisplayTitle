@@ -33,6 +33,7 @@ jobs:
       PHP_VERSION: ${{ matrix.php_version }}
       DB_TYPE: ${{ matrix.database_type }}
       DB_IMAGE: ${{ matrix.database_image }}
+      SCRIBUNTO_VERSION: REL1_43
 
     steps:
       - name: Checkout

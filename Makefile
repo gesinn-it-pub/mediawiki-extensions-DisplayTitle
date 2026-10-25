@@ -18,6 +18,7 @@ DB_TYPE?=mysql
 DB_IMAGE?=mysql:8.0
 
 # extensions
+SCRIBUNTO_VERSION?=REL1_43
 
 # composer
 # Enables "composer update" inside of extension
