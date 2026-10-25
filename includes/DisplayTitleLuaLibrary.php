@@ -3,8 +3,9 @@
 namespace MediaWiki\Extension\DisplayTitle;
 
 use CoreParserFunctions;
+use MediaWiki\Extension\Scribunto\Engines\LuaCommon\LibraryBase;
 use MediaWiki\MediaWikiServices;
-use Title;
+use MediaWiki\Title\Title;
 
 /**
  * Class DisplayTitleLuaLibrary
@@ -14,7 +15,7 @@ use Title;
  * @since 1.2
  * @author Tobias Oetterer < oetterer@uni-paderborn.de >
  */
-class DisplayTitleLuaLibrary extends LuaLibraryBase {
+class DisplayTitleLuaLibrary extends LibraryBase {
 	/**
 	 * Called to register the library.
 	 *
@@ -26,8 +27,8 @@ class DisplayTitleLuaLibrary extends LuaLibraryBase {
 	 */
 	public function register(): array {
 		$lib = [
-			'get'   => [ $this, 'getDisplayTitle' ],
-			'set'   => [ $this, 'setDisplayTitle' ],
+			'get' => [ $this, 'getDisplayTitle' ],
+			'set' => [ $this, 'setDisplayTitle' ],
 		];
 
 		return $this->getEngine()->registerInterface( __DIR__ . '/' . 'displaytitle.lua', $lib, [] );
@@ -76,14 +77,14 @@ class DisplayTitleLuaLibrary extends LuaLibraryBase {
 	 * This takes any value and makes sure, that it can be used inside lua.
 	 * I.e. converts php arrays to lua tables, dumps objects and functions, etc.
 	 * E.g. A resulting table has its numerical indices start with 1
-	 * @uses Scribunto_LuaLibraryBase::getLuaType
+	 * @uses LibraryBase::getLuaType
 	 * @param mixed $valueToConvert
 	 * @return mixed
 	 */
 	private function convertToLuaValue( $valueToConvert ) {
 		$type = $this->getLuaType( $valueToConvert );
-		if ( $type == 'nil'
-			|| $type == 'function'
+		if ( $type === 'nil'
+			|| $type === 'function'
 			|| preg_match( '/^PHP .*/', $valueToConvert )
 		) {
 			return null;

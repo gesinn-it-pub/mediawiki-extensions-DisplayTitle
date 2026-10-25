@@ -5,7 +5,7 @@ namespace MediaWiki\Extension\DisplayTitle;
 use GenericParameterJob;
 use Job;
 use MediaWiki\MediaWikiServices;
-use Title;
+use MediaWiki\Title\Title;
 
 /**
  * Job to purge the parser cache of all pages that link to a page whose
@@ -40,10 +40,10 @@ class DisplayTitlePurgeIncomingLinksJob extends Job implements GenericParameterJ
 
 		$purged = [];
 		foreach ( [ 'pagelinks', 'templatelinks', 'imagelinks' ] as $table ) {
-			foreach ( $backlinkCache->getLinks( $table ) as $linkedTitle ) {
-				$pageId = $linkedTitle->getArticleID();
+			foreach ( $backlinkCache->getLinkPages( $table ) as $linkedPage ) {
+				$pageId = $linkedPage->getId();
 				if ( !isset( $purged[$pageId] ) ) {
-					$wikiPageFactory->newFromTitle( $linkedTitle )->doPurge();
+					$wikiPageFactory->newFromTitle( $linkedPage )->doPurge();
 					$purged[$pageId] = true;
 				}
 			}
