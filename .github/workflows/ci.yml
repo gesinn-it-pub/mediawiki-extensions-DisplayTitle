@@ -2,11 +2,11 @@ name: CI
 
 on:
   push:
-    branches: [ master, main, 1.35 ]
+    branches: [ main, maint/4.x ]
     paths-ignore:
       - '**/*.adoc'
   pull_request:
-    branches: [ master, main, 1.35 ]
+    branches: [ main, maint/4.x ]
     paths-ignore:
       - '**/*.adoc'
   workflow_dispatch:
@@ -69,4 +69,5 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: gesinn-it-pub/mediawiki-extensions-DisplayTitle
           files: build/coverage/php/coverage.xml
+          disable_search: true
         if: matrix.coverage == true
