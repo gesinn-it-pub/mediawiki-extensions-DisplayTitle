@@ -18,6 +18,4 @@ $cfg['exclude_analysis_directory_list'] = array_merge(
 	]
 );
 
-$cfg['baseline_path'] = __DIR__ . '/baseline.php';
-
 return $cfg;
